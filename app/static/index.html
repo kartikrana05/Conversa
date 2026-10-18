@@ -128,6 +128,8 @@
     }
     .toggle:hover { background: none; text-decoration: underline; }
     .empty { color: var(--muted); padding: 16px 0; }
+    .hint { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+    .toolbar .hint { margin: 0; align-self: center; }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -159,6 +161,7 @@
     <div class="tabs" role="tablist">
       <button type="button" role="tab" aria-selected="true" data-tab="priority">Priority queue</button>
       <button type="button" role="tab" aria-selected="false" data-tab="all">All replies</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="optouts">Opt-outs</button>
     </div>
 
     <div data-panel="priority">
@@ -201,6 +204,16 @@
         <button type="button" class="secondary" data-refresh>Refresh</button>
       </div>
       <div id="all-list"></div>
+    </div>
+
+    <div data-panel="optouts" hidden>
+      <p class="hint">Prospects who asked to unsubscribe or not be contacted. Remove them from your sequences.</p>
+      <div class="toolbar">
+        <button type="button" class="secondary" id="copy-optouts">Copy prospect IDs</button>
+        <button type="button" class="secondary" data-refresh>Refresh</button>
+        <span class="hint" id="copy-status" aria-live="polite"></span>
+      </div>
+      <div id="optout-list"></div>
     </div>
   </section>
 </main>
@@ -327,9 +340,40 @@
     }
   }
 
+  let optOutIds = [];
+
+  async function loadOptOuts() {
+    const container = $("#optout-list");
+    try {
+      // Opt-outs are always classified negative, so filter those down to opt_out = true
+      const data = await api("/replies?sentiment=negative");
+      const rows = data.replies.filter((r) => r.opt_out === true);
+      optOutIds = [...new Set(rows.map((r) => r.prospect_id))];
+      $("#copy-optouts").disabled = optOutIds.length === 0;
+      if (rows.length === 0) {
+        container.replaceChildren(el("p", { className: "empty", textContent: "No opt-outs yet." }));
+        return;
+      }
+      renderTable(container, rows, [prospectColumn, replyColumn]);
+    } catch (error) {
+      showError(container, error.message);
+    }
+  }
+
+  $("#copy-optouts").addEventListener("click", async () => {
+    const status = $("#copy-status");
+    try {
+      await navigator.clipboard.writeText(optOutIds.join("\n"));
+      status.textContent = `Copied ${optOutIds.length} prospect ID${optOutIds.length === 1 ? "" : "s"}`;
+    } catch {
+      status.textContent = "Couldn't copy. Select the IDs in the table instead.";
+    }
+  });
+
   function refreshLists() {
     loadPriority();
     loadAll();
+    loadOptOuts();
   }
 
   $("#reply-form").addEventListener("submit", async (event) => {
