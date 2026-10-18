@@ -92,7 +92,7 @@ Each phrase in the classifier has a weight (1 = weak hint, 2 = clear, 3 = strong
 
 ## High-level design
 
-Solid boxes are built. Dashed boxes are planned (see [Roadmap](#roadmap)).
+Solid boxes are built. Dashed boxes are planned .
 
 ```mermaid
 flowchart LR
