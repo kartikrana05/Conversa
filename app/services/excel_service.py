@@ -55,6 +55,22 @@ def _write(df: pd.DataFrame) -> None:
         tmp_file.unlink(missing_ok=True)
 
 
+def read_replies(
+    sentiment: str | None = None,
+    prospect_id: str | None = None,
+) -> list[dict[str, str]]:
+    """Return saved replies, optionally filtered. Returns [] if nothing has been saved yet."""
+    if not OUTPUT_FILE.exists():
+        return []
+
+    df = _read_existing()[COLUMNS].fillna("")
+    if sentiment is not None:
+        df = df[df["sentiment"] == sentiment]
+    if prospect_id is not None:
+        df = df[df["prospect_id"] == prospect_id]
+    return df.to_dict(orient="records")
+
+
 def append_reply(prospect_id: str, reply_text: str, sentiment: str) -> bool:
     """Append a reply row. Returns False if the same prospect already sent this exact reply."""
     new_row = pd.DataFrame(

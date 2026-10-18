@@ -81,3 +81,24 @@ def test_locked_file_raises_clear_error_and_keeps_data(tmp_path, monkeypatch):
     # Original file is untouched and no temp file is left behind
     assert len(pd.read_excel(output_file)) == 1
     assert list(tmp_path.iterdir()) == [output_file]
+
+
+def test_read_replies_returns_empty_when_no_file(tmp_path, monkeypatch):
+    monkeypatch.setattr(excel_service, "OUTPUT_FILE", tmp_path / "missing.xlsx")
+
+    assert excel_service.read_replies() == []
+
+
+def test_read_replies_filters(tmp_path, monkeypatch):
+    monkeypatch.setattr(excel_service, "OUTPUT_FILE", tmp_path / "classified_replies.xlsx")
+    excel_service.append_reply("P001", "Book a call", "positive")
+    excel_service.append_reply("P002", "Not interested", "negative")
+    excel_service.append_reply("P001", "Tell me more", "positive")
+
+    assert len(excel_service.read_replies()) == 3
+    assert [r["prospect_id"] for r in excel_service.read_replies(sentiment="negative")] == ["P002"]
+    assert [r["reply_text"] for r in excel_service.read_replies(prospect_id="P001")] == [
+        "Book a call",
+        "Tell me more",
+    ]
+    assert excel_service.read_replies(sentiment="negative", prospect_id="P001") == []

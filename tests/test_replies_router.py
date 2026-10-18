@@ -47,3 +47,24 @@ def test_duplicate_returns_409(monkeypatch):
 def test_whitespace_only_input_is_rejected():
     with pytest.raises(ValueError):
         ReplyRequest(prospect_id="   ", reply_text="Hello")
+
+
+def test_list_replies_returns_count_and_rows(monkeypatch):
+    rows = [{"prospect_id": "P001", "reply_text": "Book a call", "sentiment": "positive"}]
+    monkeypatch.setattr(replies, "read_replies", lambda **kwargs: rows)
+
+    result = asyncio.run(replies.list_replies(sentiment=None, prospect_id=None))
+
+    assert result == {"count": 1, "replies": rows}
+
+
+def test_list_replies_maps_storage_errors(monkeypatch):
+    def fail(**kwargs):
+        raise excel_service.ExcelFileCorruptedError("boom")
+
+    monkeypatch.setattr(replies, "read_replies", fail)
+
+    with pytest.raises(HTTPException) as exc_info:
+        asyncio.run(replies.list_replies(sentiment=None, prospect_id=None))
+
+    assert exc_info.value.status_code == 500
