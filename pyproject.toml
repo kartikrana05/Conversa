@@ -3,7 +3,7 @@ name = "conversa"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi>=0.144.0",
+    "fastapi[standard]>=0.144.0",
     "openpyxl>=3.1.5",
     "pandas>=3.0.6",
     "uvicorn[standard]>=0.54.0",
