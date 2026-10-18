@@ -1,6 +1,6 @@
 import pytest
 
-from app.services.classifier import classify_reply
+from app.services.classifier import classify_reply, score_reply
 
 
 def test_positive_reply():
@@ -81,3 +81,32 @@ def test_ambiguous_and_deferred_replies_are_neutral(text):
 )
 def test_opt_out_always_wins(text):
     assert classify_reply(text) == "negative"
+
+
+def test_scores_are_returned():
+    result = score_reply("Book a call and sign me up")
+
+    assert result.sentiment == "positive"
+    assert result.positive_score == 6
+    assert result.negative_score == 0
+    assert result.neutral_score == 0
+    assert result.score_margin == 6
+    assert result.opt_out is False
+
+
+def test_stronger_replies_get_a_bigger_margin():
+    assert score_reply("Book a call and sign me up").score_margin > score_reply("Sure").score_margin
+
+
+def test_opt_out_is_flagged():
+    result = score_reply("Yes I'm interested, but please unsubscribe me")
+
+    assert result.sentiment == "negative"
+    assert result.opt_out is True
+    # Scores still show what else the reply said
+    assert result.positive_score > 0
+
+
+def test_classify_reply_matches_score_reply():
+    text = "Not right now, but tell me more"
+    assert classify_reply(text) == score_reply(text).sentiment

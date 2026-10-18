@@ -12,9 +12,13 @@ How a reply is scored:
 6. Otherwise the strongest of positive / negative / neutral wins. Deferrals
    ("maybe", "next quarter", "circle back") push towards neutral. No clear signal,
    or a near-tie between conflicting signals, gives neutral.
+
+score_reply() returns the label plus the scores behind it; classify_reply() returns
+just the label.
 """
 
 import re
+from dataclasses import dataclass
 
 POSITIVE = "positive"
 NEGATIVE = "negative"
@@ -209,14 +213,28 @@ def _is_negated(words: list[str], used: list[bool], start: int) -> bool:
     return any(words[i] in NEGATORS and not used[i] for i in window)
 
 
-def classify_reply(reply_text: str) -> str:
+@dataclass(frozen=True)
+class ClassificationResult:
+    sentiment: str
+    positive_score: float
+    negative_score: float
+    neutral_score: float
+    # Winning score minus the runner-up: how clear-cut the reply is.
+    # Use it to rank replies within a sentiment (higher = act on it first).
+    score_margin: float
+    # True when the reply asked to unsubscribe / not be contacted
+    opt_out: bool
+
+
+def score_reply(reply_text: str) -> ClassificationResult:
     scores = {POSITIVE: 0.0, NEGATIVE: 0.0, NEUTRAL: 0.0}
+    opt_out = False
 
     for words, clause_weight in _clauses(_normalise(reply_text)):
         for label, weight, negated in _match_phrases(words):
             if label == OPT_OUT:
                 if not negated:
-                    return NEGATIVE
+                    opt_out = True
             elif label == POSITIVE and negated:
                 # "not interested", "never wanted a demo"
                 scores[NEGATIVE] += weight * clause_weight
@@ -229,7 +247,25 @@ def classify_reply(reply_text: str) -> str:
 
     ranked = sorted(scores.items(), key=lambda item: item[1], reverse=True)
     (top_label, top_score), (_, second_score) = ranked[0], ranked[1]
+    margin = top_score - second_score
 
-    if top_score == 0 or top_score - second_score < MIN_MARGIN:
-        return NEUTRAL
-    return top_label
+    if opt_out:
+        # Opt-outs must be honoured, whatever else the reply says
+        sentiment = NEGATIVE
+    elif top_score == 0 or margin < MIN_MARGIN:
+        sentiment = NEUTRAL
+    else:
+        sentiment = top_label
+
+    return ClassificationResult(
+        sentiment=sentiment,
+        positive_score=scores[POSITIVE],
+        negative_score=scores[NEGATIVE],
+        neutral_score=scores[NEUTRAL],
+        score_margin=margin,
+        opt_out=opt_out,
+    )
+
+
+def classify_reply(reply_text: str) -> str:
+    return score_reply(reply_text).sentiment

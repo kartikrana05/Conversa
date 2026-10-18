@@ -4,7 +4,7 @@ from app.routers import replies
 
 
 reply_router = replies.router
-app = FastAPI(title="Conversa")
+app = FastAPI(title="Conversa", redirect_slashes=False)
 
 app.include_router(reply_router)
 

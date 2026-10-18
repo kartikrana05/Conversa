@@ -1,11 +1,20 @@
 import logging
 from collections.abc import Generator
 from contextlib import contextmanager
+from dataclasses import asdict
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.schemas.reply import ReplyList, ReplyRequest, Sentiment
-from app.services.classifier import classify_reply
+from app.schemas.reply import (
+    PriorityList,
+    ReplyCreated,
+    ReplyList,
+    ReplyRequest,
+    Sentiment,
+    SortField,
+)
+from app.services.classifier import score_reply
+from app.services.priority import priority_queue
 from app.services.excel_service import (
     ExcelFileCorruptedError,
     ExcelFileLockedError,
@@ -45,26 +54,41 @@ def storage_errors_as_http() -> Generator[None]:
         )
 
 
-@router.get("/", response_model=ReplyList)
+@router.get("", response_model=ReplyList)
 async def list_replies(
     sentiment: Sentiment | None = Query(default=None, description="Only return replies with this sentiment"),
     prospect_id: str | None = Query(default=None, description="Only return replies from this prospect"),
+    sort_by: SortField | None = Query(
+        default=None,
+        description="Sort highest first. Use score_margin with sentiment=positive to get the hottest leads first.",
+    ),
 ):
     with storage_errors_as_http():
-        replies = read_replies(sentiment=sentiment, prospect_id=prospect_id)
+        replies = read_replies(sentiment=sentiment, prospect_id=prospect_id, sort_by=sort_by)
 
     return {"count": len(replies), "replies": replies}
 
 
-@router.post("/", status_code=201)
+@router.get("/priority", response_model=PriorityList)
+async def get_priority_queue(
+    limit: int = Query(default=50, ge=1, le=500, description="Maximum number of replies to return"),
+):
+    """Positive replies ranked by score_margin, so a sales rep knows who to contact first."""
+    with storage_errors_as_http():
+        queue = priority_queue(limit=limit)
+
+    return {"count": len(queue), "replies": queue}
+
+
+@router.post("", status_code=201, response_model=ReplyCreated)
 async def create_reply(reply: ReplyRequest):
-    sentiment = classify_reply(reply.reply_text)
+    classification = score_reply(reply.reply_text)
 
     with storage_errors_as_http():
         saved = append_reply(
             prospect_id=reply.prospect_id,
             reply_text=reply.reply_text,
-            sentiment=sentiment,
+            classification=classification,
         )
 
     if not saved:
@@ -77,5 +101,5 @@ async def create_reply(reply: ReplyRequest):
         "message": "Reply classified and saved successfully",
         "prospect_id": reply.prospect_id,
         "reply_text": reply.reply_text,
-        "sentiment": sentiment,
+        **asdict(classification),
     }
