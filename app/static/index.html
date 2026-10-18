@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Conversa</title>
+  <style>
+    /* White and lavender theme (light only) */
+    :root {
+      color-scheme: light;
+      --bg: #f8f6fd;          /* very light lavender page */
+      --card: #ffffff;
+      --text: #2a2540;
+      --muted: #6f6890;
+      --border: #e6e0f5;
+      --field-bg: #ffffff;
+      --accent: #6655c8;      /* lavender, dark enough for white text */
+      --accent-hover: #5646b5;
+      --accent-text: #ffffff;
+      --accent-soft: #efebfc; /* selected tab, table header */
+      --pos-bg: #e5f6ec; --pos-text: #1f7a46;
+      --neg-bg: #fdecef; --neg-text: #b0304a;
+      --neu-bg: #efebfc; --neu-text: #5b4fa8;
+      --err-bg: #fdecef; --err-text: #b0304a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+    header { margin-bottom: 20px; }
+    h1 { margin: 0; font-size: 26px; color: var(--accent); }
+    header p { margin: 4px 0 0; color: var(--muted); }
+    h2 { margin: 0 0 12px; font-size: 17px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+      margin-bottom: 18px;
+      box-shadow: 0 1px 3px rgba(102, 85, 200, 0.08);
+    }
+    label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 14px; }
+    input, textarea, select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--field-bg);
+      color: var(--text);
+      font: inherit;
+    }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+    textarea { min-height: 110px; resize: vertical; }
+    .field { margin-bottom: 12px; }
+    button {
+      padding: 8px 16px;
+      border: 0;
+      border-radius: 6px;
+      background: var(--accent);
+      color: var(--accent-text);
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: var(--accent-hover); }
+    button:disabled { opacity: 0.6; cursor: wait; }
+    button.secondary {
+      background: var(--card);
+      color: var(--accent);
+      border: 1px solid var(--border);
+      font-weight: 500;
+    }
+    button.secondary:hover { background: var(--accent-soft); }
+    .result { margin-top: 14px; }
+    .result:empty { display: none; }
+    .scores { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 8px; color: var(--muted); font-size: 14px; }
+    .scores b { color: var(--text); }
+    .error {
+      padding: 10px 12px;
+      border-radius: 6px;
+      background: var(--err-bg);
+      color: var(--err-text);
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+    .badge.positive { background: var(--pos-bg); color: var(--pos-text); }
+    .badge.negative { background: var(--neg-bg); color: var(--neg-text); }
+    .badge.neutral { background: var(--neu-bg); color: var(--neu-text); }
+    .tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+    .tabs button { background: transparent; color: var(--muted); border: 1px solid transparent; }
+    .tabs button:hover { background: var(--accent-soft); }
+    .tabs button[aria-selected="true"] { color: var(--accent); border-color: var(--border); background: var(--accent-soft); }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 12px; }
+    .toolbar .field { margin: 0; min-width: 160px; }
+    .table-wrap { overflow-x: auto; }
+    /* On narrow screens the table scrolls sideways instead of squeezing the Reply column */
+    table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; white-space: nowrap; background: var(--accent-soft); }
+    tbody tr:hover { background: var(--bg); }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    th.num { text-align: right; }
+    td.reply { width: 100%; max-width: 0; }  /* take the spare width, but never push the table wider */
+    .reply-text { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .reply-text.expanded { white-space: pre-wrap; overflow-wrap: anywhere; }
+    .toggle {
+      padding: 0;
+      margin-top: 2px;
+      background: none;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .toggle:hover { background: none; text-decoration: underline; }
+    .empty { color: var(--muted); padding: 16px 0; }
+    .hint { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+    .toolbar .hint { margin: 0; align-self: center; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Conversa</h1>
+    <p>Classify email replies and see who to contact first.</p>
+  </header>
+
+  <section class="card">
+    <h2>Classify a reply</h2>
+    <form id="reply-form">
+      <div class="field">
+        <label for="prospect-id">Prospect ID</label>
+        <input id="prospect-id" required maxlength="100" placeholder="P001">
+      </div>
+      <div class="field">
+        <label for="reply-text">Reply</label>
+        <textarea id="reply-text" required maxlength="5000"
+                  placeholder="I'm interested, can we schedule a demo?"></textarea>
+      </div>
+      <button type="submit" id="submit-btn">Classify and save</button>
+    </form>
+    <div class="result" id="result" aria-live="polite"></div>
+  </section>
+
+  <section class="card">
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" aria-selected="true" data-tab="priority">Priority queue</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="all">All replies</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="optouts">Opt-outs</button>
+    </div>
+
+    <div data-panel="priority">
+      <div class="toolbar">
+        <div class="field">
+          <label for="limit">Show top</label>
+          <select id="limit">
+            <option>10</option>
+            <option>20</option>
+            <option selected>50</option>
+            <option>100</option>
+          </select>
+        </div>
+        <button type="button" class="secondary" data-refresh>Refresh</button>
+      </div>
+      <div id="priority-list"></div>
+    </div>
+
+    <div data-panel="all" hidden>
+      <div class="toolbar">
+        <div class="field">
+          <label for="sentiment">Sentiment</label>
+          <select id="sentiment">
+            <option value="">All</option>
+            <option value="positive">Positive</option>
+            <option value="neutral">Neutral</option>
+            <option value="negative">Negative</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="sort-by">Sort by</label>
+          <select id="sort-by">
+            <option value="">Date saved</option>
+            <option value="score_margin">Score margin</option>
+            <option value="positive_score">Positive score</option>
+            <option value="negative_score">Negative score</option>
+            <option value="neutral_score">Neutral score</option>
+          </select>
+        </div>
+        <button type="button" class="secondary" data-refresh>Refresh</button>
+      </div>
+      <div id="all-list"></div>
+    </div>
+
+    <div data-panel="optouts" hidden>
+      <p class="hint">Prospects who asked to unsubscribe or not be contacted. Remove them from your sequences.</p>
+      <div class="toolbar">
+        <button type="button" class="secondary" id="copy-optouts">Copy prospect IDs</button>
+        <button type="button" class="secondary" data-refresh>Refresh</button>
+        <span class="hint" id="copy-status" aria-live="polite"></span>
+      </div>
+      <div id="optout-list"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+  const $ = (selector) => document.querySelector(selector);
+
+  // Build elements with textContent only, so reply text can never inject HTML
+  function el(tag, props = {}, children = []) {
+    const node = document.createElement(tag);
+    Object.assign(node, props);
+    for (const child of [].concat(children)) {
+      node.append(child instanceof Node ? child : document.createTextNode(child ?? ""));
+    }
+    return node;
+  }
+
+  function badge(sentiment) {
+    return el("span", { className: `badge ${sentiment}`, textContent: sentiment });
+  }
+
+  function formatScore(value) {
+    return value === null || value === undefined ? "–" : Number(value).toFixed(1);
+  }
+
+  // Turn FastAPI error bodies into one readable message
+  function errorMessage(status, body) {
+    const detail = body && body.detail;
+    if (Array.isArray(detail)) {
+      return detail.map((d) => `${d.loc.at(-1)}: ${d.msg}`).join("; ");
+    }
+    if (typeof detail === "string") return detail;
+    return `Request failed (${status})`;
+  }
+
+  async function api(path, options) {
+    let response;
+    try {
+      response = await fetch(path, options);
+    } catch {
+      throw new Error("Can't reach the server. Is it running?");
+    }
+    const body = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(errorMessage(response.status, body));
+    return body;
+  }
+
+  function showError(container, message) {
+    container.replaceChildren(el("div", { className: "error", textContent: message }));
+  }
+
+  function renderTable(container, rows, columns) {
+    if (rows.length === 0) {
+      container.replaceChildren(el("p", { className: "empty", textContent: "No replies yet." }));
+      return;
+    }
+    const head = el("tr", {}, columns.map((c) => el("th", { className: c.num ? "num" : "", textContent: c.label })));
+    const body = rows.map((row) =>
+      el("tr", {}, columns.map((c) => el("td", { className: c.className || (c.num ? "num" : "") }, c.render(row))))
+    );
+    container.replaceChildren(
+      el("div", { className: "table-wrap" }, el("table", {}, [el("thead", {}, head), el("tbody", {}, body)]))
+    );
+    updateToggles(container);
+  }
+
+  // One line by default; "Show more" expands the full reply
+  function collapsibleReply(text) {
+    const body = el("div", { className: "reply-text", textContent: text, title: text });
+    const toggle = el("button", { type: "button", className: "toggle", textContent: "Show more", hidden: true });
+    toggle.addEventListener("click", () => {
+      const expanded = body.classList.toggle("expanded");
+      toggle.textContent = expanded ? "Show less" : "Show more";
+      body.title = expanded ? "" : text;
+    });
+    return el("div", {}, [body, toggle]);
+  }
+
+  // Only show "Show more" for replies that don't fit on one line
+  function updateToggles(container) {
+    for (const body of container.querySelectorAll(".reply-text:not(.expanded)")) {
+      body.nextElementSibling.hidden = body.scrollWidth <= body.clientWidth;
+    }
+  }
+
+  const replyColumn = { label: "Reply", className: "reply", render: (r) => collapsibleReply(r.reply_text) };
+  const prospectColumn = { label: "Prospect", render: (r) => r.prospect_id };
+  const marginColumn = { label: "Margin", num: true, render: (r) => formatScore(r.score_margin) };
+
+  async function loadPriority() {
+    const container = $("#priority-list");
+    try {
+      const data = await api(`/replies/priority?limit=${$("#limit").value}`);
+      renderTable(container, data.replies, [
+        { label: "#", num: true, render: (r) => String(r.rank) },
+        prospectColumn,
+        replyColumn,
+        marginColumn,
+      ]);
+    } catch (error) {
+      showError(container, error.message);
+    }
+  }
+
+  async function loadAll() {
+    const container = $("#all-list");
+    const params = new URLSearchParams();
+    if ($("#sentiment").value) params.set("sentiment", $("#sentiment").value);
+    if ($("#sort-by").value) params.set("sort_by", $("#sort-by").value);
+    try {
+      const data = await api(`/replies?${params}`);
+      renderTable(container, data.replies, [
+        prospectColumn,
+        replyColumn,
+        { label: "Sentiment", render: (r) => badge(r.sentiment) },
+        { label: "Pos", num: true, render: (r) => formatScore(r.positive_score) },
+        { label: "Neg", num: true, render: (r) => formatScore(r.negative_score) },
+        { label: "Neu", num: true, render: (r) => formatScore(r.neutral_score) },
+        marginColumn,
+        { label: "Opt-out", render: (r) => (r.opt_out ? "Yes" : "") },
+      ]);
+    } catch (error) {
+      showError(container, error.message);
+    }
+  }
+
+  let optOutIds = [];
+
+  async function loadOptOuts() {
+    const container = $("#optout-list");
+    try {
+      // Opt-outs are always classified negative, so filter those down to opt_out = true
+      const data = await api("/replies?sentiment=negative");
+      const rows = data.replies.filter((r) => r.opt_out === true);
+      optOutIds = [...new Set(rows.map((r) => r.prospect_id))];
+      $("#copy-optouts").disabled = optOutIds.length === 0;
+      if (rows.length === 0) {
+        container.replaceChildren(el("p", { className: "empty", textContent: "No opt-outs yet." }));
+        return;
+      }
+      renderTable(container, rows, [prospectColumn, replyColumn]);
+    } catch (error) {
+      showError(container, error.message);
+    }
+  }
+
+  $("#copy-optouts").addEventListener("click", async () => {
+    const status = $("#copy-status");
+    try {
+      await navigator.clipboard.writeText(optOutIds.join("\n"));
+      status.textContent = `Copied ${optOutIds.length} prospect ID${optOutIds.length === 1 ? "" : "s"}`;
+    } catch {
+      status.textContent = "Couldn't copy. Select the IDs in the table instead.";
+    }
+  });
+
+  function refreshLists() {
+    loadPriority();
+    loadAll();
+    loadOptOuts();
+  }
+
+  $("#reply-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const button = $("#submit-btn");
+    const result = $("#result");
+    button.disabled = true;
+    try {
+      const data = await api("/replies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prospect_id: $("#prospect-id").value,
+          reply_text: $("#reply-text").value,
+        }),
+      });
+      result.replaceChildren(
+        el("div", {}, [badge(data.sentiment), data.opt_out ? "  Opt-out: stop contacting this prospect" : ""]),
+        el("div", { className: "scores" }, [
+          el("span", {}, ["Positive ", el("b", { textContent: formatScore(data.positive_score) })]),
+          el("span", {}, ["Negative ", el("b", { textContent: formatScore(data.negative_score) })]),
+          el("span", {}, ["Neutral ", el("b", { textContent: formatScore(data.neutral_score) })]),
+          el("span", {}, ["Margin ", el("b", { textContent: formatScore(data.score_margin) })]),
+        ])
+      );
+      $("#reply-text").value = "";
+      refreshLists();
+    } catch (error) {
+      showError(result, error.message);
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  for (const tab of document.querySelectorAll("[data-tab]")) {
+    tab.addEventListener("click", () => {
+      for (const t of document.querySelectorAll("[data-tab]")) {
+        t.setAttribute("aria-selected", String(t === tab));
+      }
+      for (const panel of document.querySelectorAll("[data-panel]")) {
+        panel.hidden = panel.dataset.panel !== tab.dataset.tab;
+        // A hidden table has no width, so check which replies overflow once it's visible
+        if (!panel.hidden) updateToggles(panel);
+      }
+    });
+  }
+
+  window.addEventListener("resize", () => {
+    for (const panel of document.querySelectorAll("[data-panel]:not([hidden])")) updateToggles(panel);
+  });
+
+  for (const button of document.querySelectorAll("[data-refresh]")) {
+    button.addEventListener("click", refreshLists);
+  }
+  $("#limit").addEventListener("change", loadPriority);
+  $("#sentiment").addEventListener("change", loadAll);
+  $("#sort-by").addEventListener("change", loadAll);
+
+  refreshLists();
+</script>
+</body>
+</html>
