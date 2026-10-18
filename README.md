@@ -13,6 +13,46 @@
 
 Conversa classifies every reply by sentiment, so the team knows who to contact now, who to follow up with later, and who to stop emailing.
 
+## At a glance
+
+```mermaid
+flowchart TD
+    A["📧 A prospect replies to your email"]
+    B["The reply is sent to Conversa<br/>(POST /replies · CRM webhook, planned)"]
+    C["Conversa reads the reply<br/>and scores it with rules<br/>(rule-based classifier)"]
+    D{"Did they ask to<br/>stop being contacted?"}
+    E{"Is the reply mostly<br/>interested, unsure,<br/>or not interested?"}
+
+    POS["🟢 Positive<br/>e.g. Can we book a demo?"]
+    NEU["🟡 Neutral<br/>e.g. Maybe next quarter"]
+    NEG["🔴 Negative<br/>e.g. Not for us"]
+    OPT["⛔ Opt-out<br/>e.g. Unsubscribe me"]
+
+    S[("Saved with its scores<br/>(Excel file)")]
+
+    P["✅ Contact now<br/>Ranked list, hottest lead first<br/>(GET /replies/priority)"]
+    F["🕒 Follow up later<br/>(GET /replies?sentiment=neutral)"]
+    X["🚫 Stop emailing<br/>(Opt-outs list in the web app)"]
+
+    A --> B --> C --> D
+    D -- Yes --> OPT
+    D -- No --> E
+    E -- Interested --> POS
+    E -- Unsure --> NEU
+    E -- Not interested --> NEG
+    POS --> S
+    NEU --> S
+    NEG --> S
+    OPT --> S
+    S --> P
+    S --> F
+    S --> X
+```
+
+**In plain words:** a prospect replies → Conversa reads the reply → it decides whether they're interested, unsure, not interested, or asking to unsubscribe → the sales team gets a ranked list of who to contact first, a list to follow up later, and a list to stop emailing.
+
+**For engineers:** replies come in through `POST /replies` (a CRM webhook is on the [roadmap](#roadmap)). The rule-based classifier in [`app/services/classifier.py`](app/services/classifier.py) scores each reply, opt-outs always become `negative`, and the result is saved with its scores. Sales reps read the ranked queue from `GET /replies/priority`, sorted by `score_margin`.
+
 ---
 
 ## Contents
