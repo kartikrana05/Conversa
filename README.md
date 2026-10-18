@@ -2,6 +2,8 @@
 
 **Conversa tells sales teams which email replies to act on first.**
 
+**Live app:** [conversa.fastapicloud.dev](https://conversa.fastapicloud.dev/)
+
 ## Problem
 
 - 10,000 outreach emails sent
@@ -49,9 +51,9 @@ flowchart TD
     S --> X
 ```
 
-**In plain words:** a prospect replies → Conversa reads the reply → it decides whether they're interested, unsure, not interested, or asking to unsubscribe → the sales team gets a ranked list of who to contact first, a list to follow up later, and a list to stop emailing.
+**In plain words:** a prospect replies → Conversa reads the reply → it decides whether they're interested, unsure, not interested, or asking to unsubscribe → the sales team gets a ranked lis[...]
 
-**For engineers:** replies come in through `POST /replies` (a CRM webhook is on the [roadmap](#roadmap)). The rule-based classifier in [`app/services/classifier.py`](app/services/classifier.py) scores each reply, opt-outs always become `negative`, and the result is saved with its scores. Sales reps read the ranked queue from `GET /replies/priority`, sorted by `score_margin`.
+**For engineers:** replies come in through `POST /replies` (a CRM webhook is on the [roadmap](#roadmap)). The rule-based classifier in [`app/services/classifier.py`](app/services/classifier.py) scores[...]
 
 ---
 
@@ -86,7 +88,7 @@ The classifier is rule-based, so it's fast, free to run and easy to explain. It 
 - **Deferrals:** "Not interested right now, maybe next quarter" → neutral, not a lost lead
 - **Opt-outs:** "unsubscribe", "do not contact" → always negative, so they're always honoured
 
-Each phrase in the classifier has a weight (1 = weak hint, 2 = clear, 3 = strong). The label with the highest total wins, and a near-tie becomes neutral. The phrase lists and weights are at the top of [`app/services/classifier.py`](app/services/classifier.py).
+Each phrase in the classifier has a weight (1 = weak hint, 2 = clear, 3 = strong). The label with the highest total wins, and a near-tie becomes neutral. The phrase lists and weights are at the to[...]
 
 ---
 
@@ -242,8 +244,8 @@ Open **http://127.0.0.1:8000/docs** for interactive API docs where you can send 
 ### 5. Classify your first reply
 
 ```bash
-curl -X POST http://127.0.0.1:8000/replies \
-  -H 'Content-Type: application/json' \
+curl -X POST http://127.0.0.1:8000/replies \\
+  -H 'Content-Type: application/json' \\
   -d '{"prospect_id": "P001", "reply_text": "I am interested, can we schedule a demo?"}'
 ```
 
@@ -431,6 +433,7 @@ Conversa/
 ├── pyproject.toml              # Dependencies and pytest config
 └── uv.lock                     # Pinned dependency versions
 ```
+
 
 
 
