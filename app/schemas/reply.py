@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-Sentiment = Literal["positive", "negative"]
+Sentiment = Literal["positive", "negative", "neutral"]
 
 
 class ReplyRequest(BaseModel):
