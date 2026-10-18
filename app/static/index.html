@@ -5,33 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Conversa</title>
   <style>
+    /* White and lavender theme (light only) */
     :root {
-      --bg: #f6f7f9;
+      color-scheme: light;
+      --bg: #f8f6fd;          /* very light lavender page */
       --card: #ffffff;
-      --text: #1b1f24;
-      --muted: #5f6b7a;
-      --border: #dde1e6;
-      --accent: #2f5fd0;
+      --text: #2a2540;
+      --muted: #6f6890;
+      --border: #e6e0f5;
+      --field-bg: #ffffff;
+      --accent: #6655c8;      /* lavender, dark enough for white text */
+      --accent-hover: #5646b5;
       --accent-text: #ffffff;
-      --pos-bg: #e3f5e9; --pos-text: #17663a;
-      --neg-bg: #fde8e8; --neg-text: #a12626;
-      --neu-bg: #eef0f3; --neu-text: #4a5462;
-      --err-bg: #fdecec; --err-text: #a12626;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #111418;
-        --card: #1a1f25;
-        --text: #e6e9ed;
-        --muted: #98a2ae;
-        --border: #2c333c;
-        --accent: #6f95f2;
-        --accent-text: #0d1117;
-        --pos-bg: #173726; --pos-text: #7ad69c;
-        --neg-bg: #3d1d1d; --neg-text: #f29b9b;
-        --neu-bg: #262c34; --neu-text: #b5bec9;
-        --err-bg: #3d1d1d; --err-text: #f29b9b;
-      }
+      --accent-soft: #efebfc; /* selected tab, table header */
+      --pos-bg: #e5f6ec; --pos-text: #1f7a46;
+      --neg-bg: #fdecef; --neg-text: #b0304a;
+      --neu-bg: #efebfc; --neu-text: #5b4fa8;
+      --err-bg: #fdecef; --err-text: #b0304a;
     }
     * { box-sizing: border-box; }
     body {
@@ -42,7 +32,7 @@
     }
     main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
     header { margin-bottom: 20px; }
-    h1 { margin: 0; font-size: 26px; }
+    h1 { margin: 0; font-size: 26px; color: var(--accent); }
     header p { margin: 4px 0 0; color: var(--muted); }
     h2 { margin: 0 0 12px; font-size: 17px; }
     .card {
@@ -51,6 +41,7 @@
       border-radius: 10px;
       padding: 18px;
       margin-bottom: 18px;
+      box-shadow: 0 1px 3px rgba(102, 85, 200, 0.08);
     }
     label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 14px; }
     input, textarea, select {
@@ -58,9 +49,14 @@
       padding: 8px 10px;
       border: 1px solid var(--border);
       border-radius: 6px;
-      background: var(--bg);
+      background: var(--field-bg);
       color: var(--text);
       font: inherit;
+    }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
     }
     textarea { min-height: 110px; resize: vertical; }
     .field { margin-bottom: 12px; }
@@ -74,13 +70,15 @@
       font-weight: 600;
       cursor: pointer;
     }
+    button:hover { background: var(--accent-hover); }
     button:disabled { opacity: 0.6; cursor: wait; }
     button.secondary {
-      background: transparent;
-      color: var(--text);
+      background: var(--card);
+      color: var(--accent);
       border: 1px solid var(--border);
       font-weight: 500;
     }
+    button.secondary:hover { background: var(--accent-soft); }
     .result { margin-top: 14px; }
     .result:empty { display: none; }
     .scores { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 8px; color: var(--muted); font-size: 14px; }
@@ -104,16 +102,31 @@
     .badge.neutral { background: var(--neu-bg); color: var(--neu-text); }
     .tabs { display: flex; gap: 6px; margin-bottom: 14px; }
     .tabs button { background: transparent; color: var(--muted); border: 1px solid transparent; }
-    .tabs button[aria-selected="true"] { color: var(--text); border-color: var(--border); background: var(--bg); }
+    .tabs button:hover { background: var(--accent-soft); }
+    .tabs button[aria-selected="true"] { color: var(--accent); border-color: var(--border); background: var(--accent-soft); }
     .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 12px; }
     .toolbar .field { margin: 0; min-width: 160px; }
     .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    /* On narrow screens the table scrolls sideways instead of squeezing the Reply column */
+    table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 14px; }
     th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
-    th { color: var(--muted); font-weight: 600; white-space: nowrap; }
+    th { color: var(--muted); font-weight: 600; white-space: nowrap; background: var(--accent-soft); }
+    tbody tr:hover { background: var(--bg); }
     td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
     th.num { text-align: right; }
-    td.reply { max-width: 420px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    td.reply { width: 100%; max-width: 0; }  /* take the spare width, but never push the table wider */
+    .reply-text { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .reply-text.expanded { white-space: pre-wrap; overflow-wrap: anywhere; }
+    .toggle {
+      padding: 0;
+      margin-top: 2px;
+      background: none;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .toggle:hover { background: none; text-decoration: underline; }
     .empty { color: var(--muted); padding: 16px 0; }
     [hidden] { display: none !important; }
   </style>
@@ -251,9 +264,29 @@
     container.replaceChildren(
       el("div", { className: "table-wrap" }, el("table", {}, [el("thead", {}, head), el("tbody", {}, body)]))
     );
+    updateToggles(container);
   }
 
-  const replyColumn = { label: "Reply", className: "reply", render: (r) => r.reply_text };
+  // One line by default; "Show more" expands the full reply
+  function collapsibleReply(text) {
+    const body = el("div", { className: "reply-text", textContent: text, title: text });
+    const toggle = el("button", { type: "button", className: "toggle", textContent: "Show more", hidden: true });
+    toggle.addEventListener("click", () => {
+      const expanded = body.classList.toggle("expanded");
+      toggle.textContent = expanded ? "Show less" : "Show more";
+      body.title = expanded ? "" : text;
+    });
+    return el("div", {}, [body, toggle]);
+  }
+
+  // Only show "Show more" for replies that don't fit on one line
+  function updateToggles(container) {
+    for (const body of container.querySelectorAll(".reply-text:not(.expanded)")) {
+      body.nextElementSibling.hidden = body.scrollWidth <= body.clientWidth;
+    }
+  }
+
+  const replyColumn = { label: "Reply", className: "reply", render: (r) => collapsibleReply(r.reply_text) };
   const prospectColumn = { label: "Prospect", render: (r) => r.prospect_id };
   const marginColumn = { label: "Margin", num: true, render: (r) => formatScore(r.score_margin) };
 
@@ -338,9 +371,15 @@
       }
       for (const panel of document.querySelectorAll("[data-panel]")) {
         panel.hidden = panel.dataset.panel !== tab.dataset.tab;
+        // A hidden table has no width, so check which replies overflow once it's visible
+        if (!panel.hidden) updateToggles(panel);
       }
     });
   }
+
+  window.addEventListener("resize", () => {
+    for (const panel of document.querySelectorAll("[data-panel]:not([hidden])")) updateToggles(panel);
+  });
 
   for (const button of document.querySelectorAll("[data-refresh]")) {
     button.addEventListener("click", refreshLists);
