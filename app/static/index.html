@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Conversa</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --card: #ffffff;
+      --text: #1b1f24;
+      --muted: #5f6b7a;
+      --border: #dde1e6;
+      --accent: #2f5fd0;
+      --accent-text: #ffffff;
+      --pos-bg: #e3f5e9; --pos-text: #17663a;
+      --neg-bg: #fde8e8; --neg-text: #a12626;
+      --neu-bg: #eef0f3; --neu-text: #4a5462;
+      --err-bg: #fdecec; --err-text: #a12626;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111418;
+        --card: #1a1f25;
+        --text: #e6e9ed;
+        --muted: #98a2ae;
+        --border: #2c333c;
+        --accent: #6f95f2;
+        --accent-text: #0d1117;
+        --pos-bg: #173726; --pos-text: #7ad69c;
+        --neg-bg: #3d1d1d; --neg-text: #f29b9b;
+        --neu-bg: #262c34; --neu-text: #b5bec9;
+        --err-bg: #3d1d1d; --err-text: #f29b9b;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+    header { margin-bottom: 20px; }
+    h1 { margin: 0; font-size: 26px; }
+    header p { margin: 4px 0 0; color: var(--muted); }
+    h2 { margin: 0 0 12px; font-size: 17px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+    label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 14px; }
+    input, textarea, select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--text);
+      font: inherit;
+    }
+    textarea { min-height: 110px; resize: vertical; }
+    .field { margin-bottom: 12px; }
+    button {
+      padding: 8px 16px;
+      border: 0;
+      border-radius: 6px;
+      background: var(--accent);
+      color: var(--accent-text);
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.6; cursor: wait; }
+    button.secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+      font-weight: 500;
+    }
+    .result { margin-top: 14px; }
+    .result:empty { display: none; }
+    .scores { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 8px; color: var(--muted); font-size: 14px; }
+    .scores b { color: var(--text); }
+    .error {
+      padding: 10px 12px;
+      border-radius: 6px;
+      background: var(--err-bg);
+      color: var(--err-text);
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+    .badge.positive { background: var(--pos-bg); color: var(--pos-text); }
+    .badge.negative { background: var(--neg-bg); color: var(--neg-text); }
+    .badge.neutral { background: var(--neu-bg); color: var(--neu-text); }
+    .tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+    .tabs button { background: transparent; color: var(--muted); border: 1px solid transparent; }
+    .tabs button[aria-selected="true"] { color: var(--text); border-color: var(--border); background: var(--bg); }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 12px; }
+    .toolbar .field { margin: 0; min-width: 160px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; white-space: nowrap; }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    th.num { text-align: right; }
+    td.reply { max-width: 420px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .empty { color: var(--muted); padding: 16px 0; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Conversa</h1>
+    <p>Classify email replies and see who to contact first.</p>
+  </header>
+
+  <section class="card">
+    <h2>Classify a reply</h2>
+    <form id="reply-form">
+      <div class="field">
+        <label for="prospect-id">Prospect ID</label>
+        <input id="prospect-id" required maxlength="100" placeholder="P001">
+      </div>
+      <div class="field">
+        <label for="reply-text">Reply</label>
+        <textarea id="reply-text" required maxlength="5000"
+                  placeholder="I'm interested, can we schedule a demo?"></textarea>
+      </div>
+      <button type="submit" id="submit-btn">Classify and save</button>
+    </form>
+    <div class="result" id="result" aria-live="polite"></div>
+  </section>
+
+  <section class="card">
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" aria-selected="true" data-tab="priority">Priority queue</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="all">All replies</button>
+    </div>
+
+    <div data-panel="priority">
+      <div class="toolbar">
+        <div class="field">
+          <label for="limit">Show top</label>
+          <select id="limit">
+            <option>10</option>
+            <option>20</option>
+            <option selected>50</option>
+            <option>100</option>
+          </select>
+        </div>
+        <button type="button" class="secondary" data-refresh>Refresh</button>
+      </div>
+      <div id="priority-list"></div>
+    </div>
+
+    <div data-panel="all" hidden>
+      <div class="toolbar">
+        <div class="field">
+          <label for="sentiment">Sentiment</label>
+          <select id="sentiment">
+            <option value="">All</option>
+            <option value="positive">Positive</option>
+            <option value="neutral">Neutral</option>
+            <option value="negative">Negative</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="sort-by">Sort by</label>
+          <select id="sort-by">
+            <option value="">Date saved</option>
+            <option value="score_margin">Score margin</option>
+            <option value="positive_score">Positive score</option>
+            <option value="negative_score">Negative score</option>
+            <option value="neutral_score">Neutral score</option>
+          </select>
+        </div>
+        <button type="button" class="secondary" data-refresh>Refresh</button>
+      </div>
+      <div id="all-list"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+  const $ = (selector) => document.querySelector(selector);
+
+  // Build elements with textContent only, so reply text can never inject HTML
+  function el(tag, props = {}, children = []) {
+    const node = document.createElement(tag);
+    Object.assign(node, props);
+    for (const child of [].concat(children)) {
+      node.append(child instanceof Node ? child : document.createTextNode(child ?? ""));
+    }
+    return node;
+  }
+
+  function badge(sentiment) {
+    return el("span", { className: `badge ${sentiment}`, textContent: sentiment });
+  }
+
+  function formatScore(value) {
+    return value === null || value === undefined ? "–" : Number(value).toFixed(1);
+  }
+
+  // Turn FastAPI error bodies into one readable message
+  function errorMessage(status, body) {
+    const detail = body && body.detail;
+    if (Array.isArray(detail)) {
+      return detail.map((d) => `${d.loc.at(-1)}: ${d.msg}`).join("; ");
+    }
+    if (typeof detail === "string") return detail;
+    return `Request failed (${status})`;
+  }
+
+  async function api(path, options) {
+    let response;
+    try {
+      response = await fetch(path, options);
+    } catch {
+      throw new Error("Can't reach the server. Is it running?");
+    }
+    const body = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(errorMessage(response.status, body));
+    return body;
+  }
+
+  function showError(container, message) {
+    container.replaceChildren(el("div", { className: "error", textContent: message }));
+  }
+
+  function renderTable(container, rows, columns) {
+    if (rows.length === 0) {
+      container.replaceChildren(el("p", { className: "empty", textContent: "No replies yet." }));
+      return;
+    }
+    const head = el("tr", {}, columns.map((c) => el("th", { className: c.num ? "num" : "", textContent: c.label })));
+    const body = rows.map((row) =>
+      el("tr", {}, columns.map((c) => el("td", { className: c.className || (c.num ? "num" : "") }, c.render(row))))
+    );
+    container.replaceChildren(
+      el("div", { className: "table-wrap" }, el("table", {}, [el("thead", {}, head), el("tbody", {}, body)]))
+    );
+  }
+
+  const replyColumn = { label: "Reply", className: "reply", render: (r) => r.reply_text };
+  const prospectColumn = { label: "Prospect", render: (r) => r.prospect_id };
+  const marginColumn = { label: "Margin", num: true, render: (r) => formatScore(r.score_margin) };
+
+  async function loadPriority() {
+    const container = $("#priority-list");
+    try {
+      const data = await api(`/replies/priority?limit=${$("#limit").value}`);
+      renderTable(container, data.replies, [
+        { label: "#", num: true, render: (r) => String(r.rank) },
+        prospectColumn,
+        replyColumn,
+        marginColumn,
+      ]);
+    } catch (error) {
+      showError(container, error.message);
+    }
+  }
+
+  async function loadAll() {
+    const container = $("#all-list");
+    const params = new URLSearchParams();
+    if ($("#sentiment").value) params.set("sentiment", $("#sentiment").value);
+    if ($("#sort-by").value) params.set("sort_by", $("#sort-by").value);
+    try {
+      const data = await api(`/replies?${params}`);
+      renderTable(container, data.replies, [
+        prospectColumn,
+        replyColumn,
+        { label: "Sentiment", render: (r) => badge(r.sentiment) },
+        { label: "Pos", num: true, render: (r) => formatScore(r.positive_score) },
+        { label: "Neg", num: true, render: (r) => formatScore(r.negative_score) },
+        { label: "Neu", num: true, render: (r) => formatScore(r.neutral_score) },
+        marginColumn,
+        { label: "Opt-out", render: (r) => (r.opt_out ? "Yes" : "") },
+      ]);
+    } catch (error) {
+      showError(container, error.message);
+    }
+  }
+
+  function refreshLists() {
+    loadPriority();
+    loadAll();
+  }
+
+  $("#reply-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const button = $("#submit-btn");
+    const result = $("#result");
+    button.disabled = true;
+    try {
+      const data = await api("/replies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prospect_id: $("#prospect-id").value,
+          reply_text: $("#reply-text").value,
+        }),
+      });
+      result.replaceChildren(
+        el("div", {}, [badge(data.sentiment), data.opt_out ? "  Opt-out: stop contacting this prospect" : ""]),
+        el("div", { className: "scores" }, [
+          el("span", {}, ["Positive ", el("b", { textContent: formatScore(data.positive_score) })]),
+          el("span", {}, ["Negative ", el("b", { textContent: formatScore(data.negative_score) })]),
+          el("span", {}, ["Neutral ", el("b", { textContent: formatScore(data.neutral_score) })]),
+          el("span", {}, ["Margin ", el("b", { textContent: formatScore(data.score_margin) })]),
+        ])
+      );
+      $("#reply-text").value = "";
+      refreshLists();
+    } catch (error) {
+      showError(result, error.message);
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  for (const tab of document.querySelectorAll("[data-tab]")) {
+    tab.addEventListener("click", () => {
+      for (const t of document.querySelectorAll("[data-tab]")) {
+        t.setAttribute("aria-selected", String(t === tab));
+      }
+      for (const panel of document.querySelectorAll("[data-panel]")) {
+        panel.hidden = panel.dataset.panel !== tab.dataset.tab;
+      }
+    });
+  }
+
+  for (const button of document.querySelectorAll("[data-refresh]")) {
+    button.addEventListener("click", refreshLists);
+  }
+  $("#limit").addEventListener("change", loadPriority);
+  $("#sentiment").addEventListener("change", loadAll);
+  $("#sort-by").addEventListener("change", loadAll);
+
+  refreshLists();
+</script>
+</body>
+</html>

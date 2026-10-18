@@ -123,7 +123,8 @@ sequenceDiagram
 
 | Component | File | Responsibility |
 |---|---|---|
-| API app | [`app/main.py`](app/main.py) | FastAPI app, health check, router registration |
+| API app | [`app/main.py`](app/main.py) | FastAPI app, health check, router registration, serves the web page |
+| Web app | [`app/static/index.html`](app/static/index.html) | Classify form, priority queue and replies table |
 | Replies router | [`app/routers/replies.py`](app/routers/replies.py) | `POST` and `GET /replies`; maps storage failures to clear HTTP errors |
 | Schemas | [`app/schemas/reply.py`](app/schemas/reply.py) | Request and response models, input validation |
 | Classifier | [`app/services/classifier.py`](app/services/classifier.py) | Rule-based intent classification |
@@ -193,6 +194,8 @@ The API runs at **http://127.0.0.1:8000**. `--reload` restarts the server when y
 curl http://127.0.0.1:8000/health
 # {"message":"Conversa is healthy!"}
 ```
+
+Open **http://127.0.0.1:8000/** for the web app: classify replies, see the priority queue, and browse all replies.
 
 Open **http://127.0.0.1:8000/docs** for interactive API docs where you can send requests from the browser.
 
@@ -372,14 +375,17 @@ When you add a phrase to the classifier, add a test case for it too.
 ```
 Conversa/
 ├── app/
-│   ├── main.py                 # FastAPI app and health check
+│   ├── main.py                 # FastAPI app, web page and health check
 │   ├── routers/
 │   │   └── replies.py          # /replies endpoints
 │   ├── schemas/
 │   │   └── reply.py            # Request/response models
-│   └── services/
-│       ├── classifier.py       # Reply classification rules
-│       └── excel_service.py    # Excel storage
+│   ├── services/
+│   │   ├── classifier.py       # Reply classification rules
+│   │   ├── excel_service.py    # Excel storage
+│   │   └── priority.py         # Priority queue ranking
+│   └── static/
+│       └── index.html          # Web app (plain HTML/JS, no build step)
 ├── tests/                      # pytest suite
 ├── output/                     # Generated Excel file (git-ignored)
 ├── pyproject.toml              # Dependencies and pytest config
